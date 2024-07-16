@@ -1,9 +1,7 @@
-import os
 from langchain.schema import Document
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from document_loader import load_documents
-from database_manager import get_recent_positive_interactions
 
 embeddings = OpenAIEmbeddings()
 vectorstore = None  # Initialize the global variable

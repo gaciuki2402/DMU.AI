@@ -1,0 +1,42 @@
+:root {
+    --dmu-purple: #4F2D7F;
+    --dmu-purple-dark: #3D2163;
+    --dmu-orange: #C75B12;
+}
+
+.bg-dmu-purple {
+    background-color: var(--dmu-purple);
+}
+
+.bg-dmu-purple-dark {
+    background-color: var(--dmu-purple-dark);
+}
+
+.text-dmu-purple {
+    color: var(--dmu-purple);
+}
+
+.border-dmu-purple {
+    border-color: var(--dmu-purple);
+}
+
+.chat-history-item {
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.chat-history-item:hover {
+    background-color: #f3f4f6;
+}
+
+.chat-history-item.active {
+    background-color: #e5e7eb;
+}
+
+.feedback-button {
+    padding: 0.25rem 0.5rem;
+    margin-left: 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+}

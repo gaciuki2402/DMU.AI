@@ -14,6 +14,11 @@ def init_db():
                   format TEXT NOT NULL,
                   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                   user_feedback INTEGER)''')
+    
+    c.execute('''CREATE TABLE IF NOT EXISTS conversations
+                 (id TEXT PRIMARY KEY,
+                  title TEXT NOT NULL,
+                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
     conn.commit()
     conn.close()
 
@@ -34,19 +39,40 @@ def update_feedback(interaction_id, feedback):
     conn.commit()
     conn.close()
 
-def get_conversation_history(conversation_id, limit=5):
+def get_conversation_history(conversation_id):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
     c.execute("""
-        SELECT question, answer 
+        SELECT question, answer, timestamp
         FROM interactions 
         WHERE conversation_id = ?
-        ORDER BY timestamp DESC 
-        LIMIT ?
-    """, (conversation_id, limit))
+        ORDER BY timestamp ASC
+    """, (conversation_id,))
     history = c.fetchall()
     conn.close()
-    return history[::-1]  # Reverse to get chronological order
+    return history
+
+def get_all_conversations():
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute("SELECT id, title FROM conversations ORDER BY created_at DESC")
+    conversations = c.fetchall()
+    conn.close()
+    return conversations
+
+def create_new_conversation(conversation_id, title):
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute("INSERT INTO conversations (id, title) VALUES (?, ?)", (conversation_id, title))
+    conn.commit()
+    conn.close()
+
+def update_conversation_title(conversation_id, title):
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute("UPDATE conversations SET title = ? WHERE id = ?", (title, conversation_id))
+    conn.commit()
+    conn.close()
 
 def get_recent_positive_interactions(limit=10, threshold=3):
     conn = sqlite3.connect(DATABASE)

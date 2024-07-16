@@ -1,16 +1,16 @@
 import logging
 import os
 import uuid
-from typing import Optional
-
-import openai
+from typing import Optional, List
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
 from config import load_environment
 from index_manager import load_or_create_index, update_index_with_interaction, get_relevant_context
 from qa_chain import get_qa_chain
-from database_manager import init_db, store_interaction, update_feedback, get_conversation_history
+from database_manager import (init_db, store_interaction, update_feedback, 
+                              get_conversation_history, get_all_conversations, 
+                              create_new_conversation, update_conversation_title)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -26,9 +26,6 @@ init_db()
 # Load or create vector index
 vectorstore = load_or_create_index()
 
-# Load OpenAI API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
 # Pydantic models
 class Question(BaseModel):
     question: str
@@ -39,23 +36,21 @@ class Feedback(BaseModel):
     interaction_id: int
     feedback: int
 
-# Helper functions
-def summarize_content(content: str) -> str:
-    response = openai.Completion.create(
-        engine="text-davinci-002",
-        prompt=f"Summarize the following content:\n\n{content}",
-        max_tokens=150
-    )
-    return response.choices[0].text.strip()
+class Message(BaseModel):
+    sender: str
+    content: str
+    interaction_id: Optional[int] = None
+    timestamp: str
 
-def simplify_content(content: str) -> str:
-    response = openai.Completion.create(
-        engine="text-davinci-002",
-        prompt=f"Simplify the following content:\n\n{content}",
-        max_tokens=300
-    )
-    return response.choices[0].text.strip()
+class Conversation(BaseModel):
+    id: str
+    title: str
+    messages: List[Message]
 
+class ChatHistory(BaseModel):
+    conversations: List[Conversation]
+
+# API routes
 @app.post("/ask")
 async def ask_question(question: Question, background_tasks: BackgroundTasks):
     logger.info(f"Received question: {question.question}")
@@ -71,7 +66,7 @@ async def ask_question(question: Question, background_tasks: BackgroundTasks):
     
     # Prepare the context with conversation history
     context = "Previous conversation:\n"
-    for prev_question, prev_answer in conversation_history:
+    for prev_question, prev_answer, _ in conversation_history:
         context += f"Human: {prev_question}\nAI: {prev_answer}\n"
     context += f"\nHuman: {question.question}\n"
     
@@ -96,18 +91,16 @@ async def ask_question(question: Question, background_tasks: BackgroundTasks):
         f"Relevant context: {relevant_context}"
     )
 
-    result = qa_chain({"query": complete_question})  # Change 'question' to 'query' here
-    if not result or 'result' not in result:  # Change 'answer' to 'result'
+    result = qa_chain({"query": complete_question})
+    if not result or 'result' not in result:
         raise HTTPException(status_code=500, detail="Failed to generate an answer")
 
-    answer = result['result']  # Change 'answer' to 'result'
-
-    if question.format == "summary":
-        answer = summarize_content(answer)
-    elif question.format == "simplified":
-        answer = simplify_content(answer)
+    answer = result['result']
 
     interaction_id = store_interaction(question.conversation_id, question.question, answer, question.format)
+    
+    # Update conversation title
+    update_conversation_title(question.conversation_id, question.question[:30])
 
     background_tasks.add_task(update_index_with_interaction, question.question, answer)
 
@@ -116,13 +109,34 @@ async def ask_question(question: Question, background_tasks: BackgroundTasks):
         "interaction_id": interaction_id,
         "conversation_id": question.conversation_id,
         "answer": answer,
-        "sources": result.get('source_documents', [])  # Change 'sources' to 'source_documents'
+        "sources": result.get('source_documents', [])
     }
 
 @app.post("/feedback")
 async def submit_feedback(feedback: Feedback):
     update_feedback(feedback.interaction_id, feedback.feedback)
     return {"message": "Feedback received"}
+
+@app.get("/chat_history")
+async def get_chat_history_endpoint():
+    conversations = get_all_conversations()
+    return ChatHistory(conversations=[Conversation(id=id, title=title, messages=[]) for id, title in conversations])
+
+@app.get("/conversation/{conversation_id}")
+async def get_conversation_endpoint(conversation_id: str):
+    history = get_conversation_history(conversation_id)
+    messages = []
+    for question, answer, timestamp in history:
+        messages.append(Message(sender="Human", content=question, timestamp=str(timestamp)))
+        messages.append(Message(sender="AI", content=answer, timestamp=str(timestamp)))
+    return Conversation(id=conversation_id, title=f"Conversation {conversation_id[:8]}", messages=messages)
+
+@app.post("/conversation/new")
+async def create_new_conversation():
+    conversation_id = str(uuid.uuid4())
+    title = f"New Conversation {conversation_id[:8]}"
+    create_new_conversation(conversation_id, title)
+    return {"conversation_id": conversation_id, "title": title}
 
 @app.get("/")
 async def root():

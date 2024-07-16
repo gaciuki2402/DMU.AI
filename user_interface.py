@@ -1,13 +1,12 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import requests
 import uuid
 import os
 
 app = Flask(__name__, static_folder='static')
 
-# Use environment variables for API URLs
-API_URL = os.getenv('API_URL', 'http://127.0.0.1:8050/ask')
-FEEDBACK_URL = os.getenv('FEEDBACK_URL', 'http://127.0.0.1:8050/feedback')
+API_URL = "http://127.0.0.1:8050/ask"
+FEEDBACK_URL = "http://127.0.0.1:8050/feedback"
 
 def call_api(question, format="default", conversation_id=None):
     payload = {
@@ -16,7 +15,7 @@ def call_api(question, format="default", conversation_id=None):
         "conversation_id": conversation_id
     }
     try:
-        response = requests.post(API_URL, json=payload, timeout=30)  # Increased timeout
+        response = requests.post(API_URL, json=payload, timeout=30)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -45,7 +44,7 @@ def ask():
         "answer": response.get("answer"),
         "interaction_id": response.get("interaction_id"),
         "conversation_id": response.get("conversation_id") or str(uuid.uuid4()),
-        "sources": response.get("sources", [])  # Include sources if available
+        "sources": response.get("sources", [])
     })
 
 @app.route('/feedback', methods=['POST'])
@@ -64,5 +63,15 @@ def feedback():
     except requests.RequestException as e:
         return jsonify({"error": f"Error submitting feedback: {str(e)}"}), 500
 
+@app.route('/get_chat_messages/<conversation_id>')
+def get_chat_messages(conversation_id):
+    # This is a placeholder. In a real application, you would fetch the messages from your database.
+    # For now, we'll return an empty list.
+    return jsonify({"messages": []})
+
+@app.route('/static/<path:path>')
+def send_static(path):
+    return send_from_directory('static', path)
+
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=5000)  # Set to False for production
+    app.run(debug=True, host='0.0.0.0', port=5000)

@@ -7,3 +7,4 @@ def load_environment():
     if not api_key:
         raise ValueError("No OpenAI API key found. Please set the OPENAI_API_KEY environment variable.")
     os.environ["OPENAI_API_KEY"] = api_key
+    

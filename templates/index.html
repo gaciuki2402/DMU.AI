@@ -3,143 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>De Montfort University AI Assistant</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            background-color: #F7F7F8;
-        }
-        .chat-container {
-            height: calc(100vh - 180px);
-            overflow-y: auto;
-        }
-        .logo-container {
-            display: flex;
-            align-items: center;
-            padding: 1rem;
-            border-bottom: 1px solid #E5E5E5;
-        }
-        .logo {
-            height: 40px;
-        }
-        .feedback-buttons {
-            display: flex;
-            justify-content: flex-end;
-            margin-top: 0.5rem;
-        }
-        .feedback-button {
-            padding: 0.25rem 0.5rem;
-            margin-left: 0.5rem;
-            border-radius: 0.25rem;
-            font-size: 0.75rem;
-        }
-    </style>
+    <title>DMU.AI Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/static/styles.css" rel="stylesheet">
 </head>
-<body class="flex flex-col h-screen">
-    <div class="logo-container bg-white">
-        <img src="{{ url_for('static', filename='dmu.jpeg') }}" alt="De Montfort University Logo" class="logo mr-4">
-        <h1 class="text-xl font-semibold">DMU.AI</h1>
-    </div>
-    <div class="flex-grow overflow-hidden">
-        <div id="chat-container" class="chat-container p-4 space-y-4"></div>
-    </div>
-    <div class="bg-white border-t border-gray-200 p-4">
-        <div class="max-w-4xl mx-auto flex">
-            <input type="text" id="user-input" class="flex-grow p-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Message DMU Assistant...">
-            <select id="format-select" class="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="default">Default</option>
-                <option value="summary">Summary</option>
-                <option value="simplified">Simplified</option>
-            </select>    
-            <button onclick="sendMessage()" class="bg-blue-500 text-white px-4 py-2 rounded-r-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">Send</button>
+<body class="flex h-screen bg-gray-100">
+    <div id="chat-history-sidebar" class="w-64 bg-white border-r overflow-y-auto">
+        <div class="p-4">
+            <h2 id="chat-history" class="text-lg font-semibold mb-4">Chat History</h2>
+            <button id="new-chat-btn" class="bg-dmu-purple text-white px-4 py-2 rounded-md w-full mb-4">New Chat</button>
+            <ul id="chat-history-list" class="space-y-2">
+                <!-- Chat history items will be dynamically inserted here -->
+            </ul>
         </div>
     </div>
 
-    <script>
-        let conversationId = null;
+    <div class="flex-1 flex flex-col">
+        <div class="logo-container bg-white p-4 border-b flex items-center">
+            <img src="/static/dmu.jpeg" alt="De Montfort University Logo" class="h-10 mr-4">
+            <h1 id="dmu.ai" class="text-xl font-semibold">DMU.AI</h1>
+        </div>
 
-        function sendMessage() {
-            const userInput = document.getElementById('user-input');
-            const formatSelect = document.getElementById('format-select');
-            const message = userInput.value.trim();
-            const format = formatSelect.value;
-            
-            if (message) {
-                displayMessage(message, 'user');
-                userInput.value = '';
-                fetch('/ask', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        question: message, 
-                        format: format,
-                        conversation_id: conversationId 
-                    }),
-                })
-                .then(response => response.json())
-                .then(data => {
-                    conversationId = data.conversation_id;
-                    displayMessage(data.answer, 'bot', data.interaction_id);
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    displayMessage('Sorry, there was an error processing your request.', 'bot');
-                });
-            }
-        }
+        <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <!-- Chat messages will be dynamically inserted here -->
+        </div>
 
-        function displayMessage(message, sender, interactionId = null) {
-            const chatContainer = document.getElementById('chat-container');
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('p-4', 'rounded-lg', 'max-w-3xl', 'mx-auto');
-            
-            if (sender === 'user') {
-                messageElement.classList.add('bg-blue-100');
-                messageElement.innerText = message;
-            } else {
-                messageElement.classList.add('bg-white', 'border', 'border-gray-200');
-                messageElement.innerText = message;
-                if (interactionId) {
-                    const feedbackButtons = document.createElement('div');
-                    feedbackButtons.classList.add('feedback-buttons');
-                    feedbackButtons.innerHTML = `
-                        <button onclick="submitFeedback(${interactionId}, 1)" class="feedback-button bg-red-500 text-white">Poor</button>
-                        <button onclick="submitFeedback(${interactionId}, 3)" class="feedback-button bg-yellow-500 text-white">Okay</button>
-                        <button onclick="submitFeedback(${interactionId}, 5)" class="feedback-button bg-green-500 text-white">Good</button>
-                    `;
-                    messageElement.appendChild(feedbackButtons);
-                }
-            }
-            
-            chatContainer.appendChild(messageElement);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
+        <div class="bg-white border-t p-4">
+            <div class="max-w-4xl mx-auto flex">
+                <select id="format-select" class="border rounded-l-md px-4 py-2">
+                    <option value="default">Default</option>
+                    <option value="summary">Summary</option>
+                    <option value="simplified">Simplified</option>
+                </select>
+                <input id="user-input" type="text" placeholder="Type your message here..." class="flex-1 border-t border-b border-l px-4 py-2 focus:outline-none focus:ring-2 focus:ring-dmu-purple">
+                <button id="send-button" class="bg-dmu-purple text-white px-4 py-2 rounded-r-md">Send</button>
+            </div>
+        </div>
+    </div>
 
-        function submitFeedback(interactionId, rating) {
-            fetch('/feedback', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ interaction_id: interactionId, feedback: rating }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Feedback submitted:', data);
-                // Optionally, you can update the UI to show that feedback was received
-            })
-            .catch(error => {
-                console.error('Error submitting feedback:', error);
-            });
-        }
-
-        document.getElementById('user-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-    </script>
+    <script src="/static/script.js"></script>
 </body>
 </html>
