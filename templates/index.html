@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>De Montfort University AI Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #F7F7F8;
+        }
+        .chat-container {
+            height: calc(100vh - 180px);
+            overflow-y: auto;
+        }
+        .logo-container {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #E5E5E5;
+        }
+        .logo {
+            height: 40px;
+        }
+        .feedback-buttons {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 0.5rem;
+        }
+        .feedback-button {
+            padding: 0.25rem 0.5rem;
+            margin-left: 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+    <div class="logo-container bg-white">
+        <img src="{{ url_for('static', filename='dmu.jpeg') }}" alt="De Montfort University Logo" class="logo mr-4">
+        <h1 class="text-xl font-semibold">DMU.AI</h1>
+    </div>
+    <div class="flex-grow overflow-hidden">
+        <div id="chat-container" class="chat-container p-4 space-y-4"></div>
+    </div>
+    <div class="bg-white border-t border-gray-200 p-4">
+        <div class="max-w-4xl mx-auto flex">
+            <input type="text" id="user-input" class="flex-grow p-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Message DMU Assistant...">
+            <select id="format-select" class="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="default">Default</option>
+                <option value="summary">Summary</option>
+                <option value="simplified">Simplified</option>
+            </select>    
+            <button onclick="sendMessage()" class="bg-blue-500 text-white px-4 py-2 rounded-r-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">Send</button>
+        </div>
+    </div>
+
+    <script>
+        let lastInteractionId = null;
+        let conversationId = null;
+
+        function sendMessage() {
+            const userInput = document.getElementById('user-input');
+            const formatSelect = document.getElementById('format-select');
+            const message = userInput.value.trim();
+            const format = formatSelect.value;
+            
+            if (message) {
+                displayMessage(message, 'user');
+                userInput.value = '';
+                fetch('/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        question: message, 
+                        format: format,
+                        conversation_id: conversationId 
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    lastInteractionId = data.interaction_id;
+                    conversationId = data.conversation_id;
+                    displayMessage(data.answer, 'bot', lastInteractionId);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    displayMessage('Sorry, there was an error processing your request.', 'bot');
+                });
+            }
+        }
+
+        function displayMessage(message, sender, interactionId = null) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('p-4', 'rounded-lg', 'max-w-3xl', 'mx-auto');
+            
+            if (sender === 'user') {
+                messageElement.classList.add('bg-blue-100');
+            } else {
+                messageElement.classList.add('bg-white', 'border', 'border-gray-200');
+                messageElement.innerText = message;
+                if (interactionId) {
+                    const feedbackButtons = document.createElement('div');
+                    feedbackButtons.classList.add('feedback-buttons');
+                    feedbackButtons.innerHTML = `
+                        <button onclick="submitFeedback(${interactionId}, 1)" class="feedback-button bg-red-500 text-white">Poor</button>
+                        <button onclick="submitFeedback(${interactionId}, 3)" class="feedback-button bg-yellow-500 text-white">Okay</button>
+                        <button onclick="submitFeedback(${interactionId}, 5)" class="feedback-button bg-green-500 text-white">Good</button>
+                    `;
+                    messageElement.appendChild(feedbackButtons);
+                }
+            }
+            
+            if (sender === 'user') {
+                messageElement.innerText = message;
+            }
+            chatContainer.appendChild(messageElement);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function submitFeedback(interactionId, rating) {
+            fetch('/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ interaction_id: interactionId, feedback: rating }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Feedback submitted:', data);
+                // Optionally, you can update the UI to show that feedback was received
+            })
+            .catch(error => {
+                console.error('Error submitting feedback:', error);
+            });
+        }
+
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

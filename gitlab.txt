@@ -1,0 +1,33 @@
+pufenV1-BTUETyjhaVc1
+1974  git add .
+ 1975  git commit -m "Establishing connection to jupyter"
+ 1976  git push -u origin main
+ 1977  git push -u origin master
+ 1978  git init 
+ 1979  git add .
+ 1980  git commit -m "Establishing connection to jupyter"
+ 1981  git push -u origin master
+ 2002  git add .
+ 2003  git commit -m "added requirements && rename notebook name"
+ 2004  git push
+ 2005  git rm --cached /env
+ 2006  git rm --cached env/
+ 2007  git rm --cached env/ -r
+ 2008  git add .
+ 2009  git commit -m "rm env"
+ 2010  git push
+ 2011  git add .
+ 2012  git rm --cached .ipynb_checkpoints/ -r 
+ 2013  git add .
+ 2014  git commit -m "rm jupyter checkpoints"
+ 2015  git push
+ 2017  git config
+ 2018  git config -e
+ 2019  git config --global user.name "Grace Gaciuki"
+ 2020  git config --global user.email "gaciukigrace@gmail.com"
+ 2022  git add .
+ 2023  git commit -m "added README.md"
+ 2024  git puch
+ 2025  git push
+ 2027  history | grep git
+(env) ahdev@komp:~/jupyter$  
