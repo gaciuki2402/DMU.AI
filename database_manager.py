@@ -62,14 +62,6 @@ def get_recent_positive_interactions(limit=10, threshold=3):
     conn.close()
     return positive_interactions
 
-def get_positive_interactions(threshold=3):
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-    c.execute("SELECT question, answer FROM interactions WHERE user_feedback > ?", (threshold,))
-    positive_interactions = c.fetchall()
-    conn.close()
-    return positive_interactions
-
 def get_interaction_count():
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()

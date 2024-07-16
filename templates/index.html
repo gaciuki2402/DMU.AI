@@ -56,7 +56,6 @@
     </div>
 
     <script>
-        let lastInteractionId = null;
         let conversationId = null;
 
         function sendMessage() {
@@ -81,9 +80,8 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    lastInteractionId = data.interaction_id;
                     conversationId = data.conversation_id;
-                    displayMessage(data.answer, 'bot', lastInteractionId);
+                    displayMessage(data.answer, 'bot', data.interaction_id);
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -99,6 +97,7 @@
             
             if (sender === 'user') {
                 messageElement.classList.add('bg-blue-100');
+                messageElement.innerText = message;
             } else {
                 messageElement.classList.add('bg-white', 'border', 'border-gray-200');
                 messageElement.innerText = message;
@@ -114,9 +113,6 @@
                 }
             }
             
-            if (sender === 'user') {
-                messageElement.innerText = message;
-            }
             chatContainer.appendChild(messageElement);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }

@@ -1,11 +1,13 @@
 from flask import Flask, render_template, request, jsonify
 import requests
 import uuid
+import os
 
 app = Flask(__name__, static_folder='static')
 
-API_URL = "https://9dcf-105-27-226-165.ngrok-free.app/ask"
-FEEDBACK_URL = "https://9dcf-105-27-226-165.ngrok-free.app/feedback" 
+# Use environment variables for API URLs
+API_URL = os.getenv('API_URL', 'http://127.0.0.1:8050/ask')
+FEEDBACK_URL = os.getenv('FEEDBACK_URL', 'http://127.0.0.1:8050/feedback')
 
 def call_api(question, format="default", conversation_id=None):
     payload = {
@@ -14,7 +16,7 @@ def call_api(question, format="default", conversation_id=None):
         "conversation_id": conversation_id
     }
     try:
-        response = requests.post(API_URL, json=payload, timeout=10)
+        response = requests.post(API_URL, json=payload, timeout=30)  # Increased timeout
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -42,7 +44,8 @@ def ask():
     return jsonify({
         "answer": response.get("answer"),
         "interaction_id": response.get("interaction_id"),
-        "conversation_id": response.get("conversation_id") or str(uuid.uuid4())
+        "conversation_id": response.get("conversation_id") or str(uuid.uuid4()),
+        "sources": response.get("sources", [])  # Include sources if available
     })
 
 @app.route('/feedback', methods=['POST'])
@@ -62,4 +65,4 @@ def feedback():
         return jsonify({"error": f"Error submitting feedback: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    app.run(debug=False)  # Set to False for production
+    app.run(debug=False, host='0.0.0.0', port=5000)  # Set to False for production
