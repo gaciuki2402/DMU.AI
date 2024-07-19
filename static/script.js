@@ -1,123 +1,49 @@
 let currentConversationId = null;
-let conversations = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM fully loaded and parsed');
     initializeEventListeners();
-    loadInitialChatHistory();
+    loadChatHistory();
 });
 
 function initializeEventListeners() {
-    const sendButton = document.getElementById('send-button');
-    const userInput = document.getElementById('user-input');
-    const newChatButton = document.getElementById('new-chat-btn');
-
-    if (sendButton) {
-        sendButton.addEventListener('click', handleSendMessage);
-    } else {
-        console.error('Send button not found');
-    }
-
-    if (userInput) {
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                handleSendMessage();
-            }
-        });
-    } else {
-        console.error('User input field not found');
-    }
-
-    if (newChatButton) {
-        newChatButton.addEventListener('click', startNewChat);
-    } else {
-        console.error('New chat button not found');
-    }
-}
-
-function handleSendMessage() {
-    console.log('Send message triggered');
-    const userInput = document.getElementById('user-input');
-    const formatSelect = document.getElementById('format-select');
-    const message = userInput.value.trim();
-    const format = formatSelect.value;
-
-    if (message) {
-        if (!currentConversationId) {
-            startNewChat().then(() => sendMessageToServer(message, format));
-        } else {
-            sendMessageToServer(message, format);
+    document.getElementById('new-chat-btn').addEventListener('click', startNewChat);
+    document.getElementById('send-button').addEventListener('click', sendMessage);
+    document.getElementById('user-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
         }
-        userInput.value = '';
-    }
-}
-
-function sendMessageToServer(message, format) {
-    displayMessage(message, 'user');
-    fetch('/ask', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            question: message, 
-            format: format,
-            conversation_id: currentConversationId 
-        }),
-    })
-    .then(response => {
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return response.json();
-    })
-    .then(data => {
-        displayMessage(data.answer, 'bot', data.interaction_id);
-        updateConversationPreview(currentConversationId, message);
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        displayMessage('Sorry, there was an error processing your request. Please try again.', 'bot');
     });
+    document.getElementById('user-input').addEventListener('input', autoResizeTextarea);
 }
 
-function startNewChat() {
-    return fetch('/conversation/new', { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
-            currentConversationId = data.conversation_id;
-            conversations.unshift({ id: data.conversation_id, title: data.title });
-            updateChatHistoryList();
-            clearChatContainer();
-        })
-        .catch(error => console.error('Error creating new conversation:', error));
+function autoResizeTextarea() {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + 'px';
 }
 
-function loadInitialChatHistory() {
+function loadChatHistory() {
     fetch('/chat_history')
         .then(response => response.json())
         .then(data => {
-            conversations = data.conversations;
-            updateChatHistoryList();
-            if (conversations.length === 0) {
-                startNewChat();
-            } else {
-                loadChat(conversations[0].id);
+            updateChatHistoryList(data.conversations);
+            if (data.conversations.length > 0) {
+                loadChat(data.conversations[0].id);
             }
         })
         .catch(error => console.error('Error loading chat history:', error));
 }
 
-function updateChatHistoryList() {
+function updateChatHistoryList(conversations) {
     const chatHistoryList = document.getElementById('chat-history-list');
-    if (!chatHistoryList) {
-        console.error('Chat history list element not found');
-        return;
-    }
     chatHistoryList.innerHTML = '';
     conversations.forEach(conv => {
         const li = document.createElement('li');
-        li.className = 'chat-history-item';
-        li.textContent = conv.title;
+        li.className = 'chat-history-item p-2 hover:bg-gray-700 cursor-pointer';
+        li.textContent = conv.title || 'New chat';
         li.onclick = () => loadChat(conv.id);
         if (conv.id === currentConversationId) {
-            li.classList.add('active');
+            li.classList.add('bg-gray-700');
         }
         chatHistoryList.appendChild(li);
     });
@@ -130,41 +56,87 @@ function loadChat(conversationId) {
         .then(data => {
             clearChatContainer();
             data.messages.forEach(msg => {
-                displayMessage(msg.content, msg.sender, msg.interaction_id);
+                displayMessage(msg.content, msg.sender === 'Human' ? 'user' : 'bot', msg.interaction_id);
             });
-            updateChatHistoryList();
+            updateChatHistoryList(data.conversations);
         })
         .catch(error => console.error('Error loading chat:', error));
 }
 
 function clearChatContainer() {
-    const chatContainer = document.getElementById('chat-container');
-    if (chatContainer) {
-        chatContainer.innerHTML = '';
-    } else {
-        console.error('Chat container not found');
+    document.getElementById('chat-container').innerHTML = '';
+}
+
+function startNewChat() {
+    fetch('/conversation/new', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            currentConversationId = data.conversation_id;
+            clearChatContainer();
+            loadChatHistory();
+        })
+        .catch(error => console.error('Error creating new conversation:', error));
+}
+
+function sendMessage() {
+    const userInput = document.getElementById('user-input');
+    const message = userInput.value.trim();
+    if (message) {
+        displayMessage(message, 'user');
+        userInput.value = '';
+        autoResizeTextarea.call(userInput);
+
+        fetch('/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                question: message,
+                format: 'default',
+                conversation_id: currentConversationId
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.answer) {
+                displayMessage(data.answer, 'bot', data.interaction_id);
+            } else {
+                console.error('No answer in response');
+                displayMessage('Sorry, I couldn\'t generate an answer.', 'bot');
+            }
+            currentConversationId = data.conversation_id;
+            loadChatHistory();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            displayMessage('Sorry, there was an error processing your request. Please try again.', 'bot');
+        });
     }
 }
 
 function displayMessage(message, sender, interactionId = null) {
     const chatContainer = document.getElementById('chat-container');
-    if (!chatContainer) {
-        console.error('Chat container not found');
-        return;
-    }
     const messageElement = document.createElement('div');
-    messageElement.classList.add('p-4', 'rounded-lg', 'max-w-3xl', 'mx-auto', 'mb-4');
+    messageElement.classList.add('message', sender === 'user' ? 'user-message' : 'bot-message');
     
-    if (sender === 'user' || sender === 'Human') {
-        messageElement.classList.add('bg-gray-100');
-        messageElement.innerText = message;
-    } else {
-        messageElement.classList.add('bg-white', 'border', 'border-gray-200');
-        messageElement.innerText = message;
-        if (interactionId) {
-            const feedbackButtons = createFeedbackButtons(interactionId);
-            messageElement.appendChild(feedbackButtons);
-        }
+    const icon = document.createElement('img');
+    icon.src = sender === 'user' ? '/static/default-user-avatar.png' : '/static/dmu.jpeg';
+    icon.alt = sender === 'user' ? 'User Avatar' : 'DMU Logo';
+    icon.className = 'message-icon';
+    
+    const content = document.createElement('p');
+    content.textContent = message;
+    
+    const timestamp = document.createElement('span');
+    timestamp.className = 'timestamp';
+    timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    messageElement.appendChild(icon);
+    messageElement.appendChild(content);
+    messageElement.appendChild(timestamp);
+
+    if (sender === 'bot' && interactionId) {
+        const feedbackButtons = createFeedbackButtons(interactionId);
+        messageElement.appendChild(feedbackButtons);
     }
     
     chatContainer.appendChild(messageElement);
@@ -173,7 +145,7 @@ function displayMessage(message, sender, interactionId = null) {
 
 function createFeedbackButtons(interactionId) {
     const feedbackButtons = document.createElement('div');
-    feedbackButtons.classList.add('mt-2');
+    feedbackButtons.classList.add('feedback-buttons', 'mt-2');
     feedbackButtons.innerHTML = `
         <button onclick="submitFeedback(${interactionId}, 1)" class="feedback-button bg-red-500 text-white">Poor</button>
         <button onclick="submitFeedback(${interactionId}, 3)" class="feedback-button bg-yellow-500 text-white">Okay</button>
@@ -191,13 +163,4 @@ function submitFeedback(interactionId, rating) {
     .then(response => response.json())
     .then(data => console.log('Feedback submitted:', data))
     .catch(error => console.error('Error submitting feedback:', error));
-}
-
-function updateConversationPreview(conversationId, message) {
-    const index = conversations.findIndex(conv => conv.id === conversationId);
-    if (index !== -1) {
-        conversations[index].title = message.substring(0, 30) + (message.length > 30 ? '...' : '');
-        conversations.unshift(conversations.splice(index, 1)[0]);
-        updateChatHistoryList();
-    }
 }
