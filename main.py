@@ -14,7 +14,7 @@ from config import load_environment
 from index_manager import load_or_create_index, update_index_with_interaction, get_relevant_context
 from database_manager import (init_db, store_interaction, update_feedback, 
                               get_conversation_history, get_all_conversations, 
-                              create_new_conversation, update_conversation_title, get_conversation)
+                              create_new_conversation, update_conversation_title, get_conversation, delete_conversation)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -154,6 +154,16 @@ async def create_new_conversation_endpoint():
     title = f"New Conversation {conversation_id[:8]}"
     create_new_conversation(conversation_id, title)
     return {"conversation_id": conversation_id, "title": title}
+
+@app.delete("/conversation/{conversation_id}")
+async def delete_conversation_endpoint(conversation_id: str):
+    try:
+        delete_conversation(conversation_id)
+        return {"message": "Conversation deleted"}
+    except Exception as e:
+        logger.error(f"Error deleting conversation: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"An error occurred while deleting the conversation: {str(e)}")
+
 
 @app.get("/")
 async def root():

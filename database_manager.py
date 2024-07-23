@@ -133,3 +133,14 @@ def get_average_feedback():
         return cursor.fetchone()[0]
     
     return execute_db_operation(_get)
+
+def delete_conversation(conversation_id):
+    def _delete(cursor):
+        cursor.execute('''
+        DELETE FROM interactions WHERE conversation_id = ?
+        ''', (conversation_id,))
+        cursor.execute('''
+        DELETE FROM conversations WHERE id = ?
+        ''', (conversation_id,))
+    
+    return execute_db_operation(_delete)

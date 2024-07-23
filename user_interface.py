@@ -13,6 +13,13 @@ def call_api(endpoint, method='GET', data=None):
             response = requests.get(url, timeout=30)
         elif method == 'POST':
             response = requests.post(url, json=data, timeout=30)
+        elif method == 'DELETE':
+            response = requests.delete(url, json=data, timeout=30)
+        elif method == 'PUT':
+            response = requests.put(url, json=data, timeout=30)
+        else:
+            return {"error": "Unsupported HTTP method"}
+        
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -49,9 +56,16 @@ def new_conversation():
     response = call_api('/conversation/new', method='POST')
     return jsonify(response)
 
+@app.route('/conversation/<conversation_id>', methods=['DELETE'])
+def delete_conversation(conversation_id):
+    response = call_api(f'/conversation/{conversation_id}', method='DELETE')
+    if 'error' in response:
+        return jsonify(response), 400
+    return jsonify({'message': 'Conversation deleted successfully'}), 200
+
 @app.route('/static/<path:path>')
 def send_static(path):
     return send_from_directory('static', path)
 
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)

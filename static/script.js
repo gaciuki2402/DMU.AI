@@ -39,9 +39,24 @@ function updateChatHistoryList(conversations) {
 
     conversations.forEach(conversation => {
         const item = document.createElement('div');
-        item.className = 'chat-history-item';
+        item.className = 'chat-history-item flex items-center justify-between p-2 border-b border-gray-300';
         item.dataset.conversationId = conversation.id;
-        item.textContent = conversation.title;
+        
+        const title = document.createElement('span');
+        title.textContent = conversation.title;
+        
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'delete-chat-button text-red-500 hover:text-red-700';
+        deleteButton.textContent = 'Delete';
+        deleteButton.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent triggering the loadChat function
+            if (confirm('Are you sure you want to delete this chat?')) {
+                deleteChat(conversation.id);
+            }
+        });
+
+        item.appendChild(title);
+        item.appendChild(deleteButton);
         item.addEventListener('click', () => loadChat(conversation.id));
         chatHistoryList.appendChild(item);
     });
@@ -135,6 +150,26 @@ function displayNewChatPrompt() {
         </button>
     `;
     chatContainer.appendChild(promptElement);
+}
+
+async function deleteChat(conversationId) {
+    try {
+        const response = await fetch(`/conversation/${conversationId}`, { method: 'DELETE' });
+        if (response.ok) {
+            loadChatHistory();
+            if (currentConversationId === conversationId) {
+                clearChatContainer();
+                currentConversationId = null;
+                questionCounter = 0;
+            }
+        } else {
+            console.error('Failed to delete conversation');
+            alert('Failed to delete conversation');
+        }
+    } catch (error) {
+        console.error('Error deleting conversation:', error);
+        alert('Error deleting conversation');
+    }
 }
 
 function displayMessage(message, sender, interactionId = null) {
