@@ -11,11 +11,7 @@ def load_documents():
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
     pdf_paths = [
-        os.path.join(current_dir, 'C:/Users/delbr/DMU/DMU2.pdf'),
-        os.path.join(current_dir, 'C:/Users/delbr/DMU/DMU1.pdf'),
-        os.path.join(current_dir, 'C:/Users/delbr/DMU/DMU3.pdf'),
-        os.path.join(current_dir, "C:/Users/delbr/DMU/DMU4.pdf")
-    ]
+                'C:/Users/delbr/DMU/DMUDATASET.pdf'    ]
 
     # Load PDFs 
     all_data = []

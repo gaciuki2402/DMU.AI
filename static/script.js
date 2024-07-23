@@ -1,4 +1,5 @@
 let currentConversationId = null;
+let questionCounter = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeEventListeners();
@@ -22,63 +23,64 @@ function autoResizeTextarea() {
     this.style.height = (this.scrollHeight) + 'px';
 }
 
-function loadChatHistory() {
-    fetch('/chat_history')
-        .then(response => response.json())
-        .then(data => {
-            updateChatHistoryList(data.conversations);
-            if (data.conversations.length > 0) {
-                loadChat(data.conversations[0].id);
-            }
-        })
-        .catch(error => console.error('Error loading chat history:', error));
+async function loadChatHistory() {
+    try {
+        const response = await fetch('/chat_history');
+        const data = await response.json();
+        updateChatHistoryList(data.conversations);
+    } catch (error) {
+        console.error('Error loading chat history:', error);
+    }
 }
 
 function updateChatHistoryList(conversations) {
     const chatHistoryList = document.getElementById('chat-history-list');
     chatHistoryList.innerHTML = '';
-    conversations.forEach(conv => {
-        const li = document.createElement('li');
-        li.className = 'chat-history-item p-2 hover:bg-gray-700 cursor-pointer';
-        li.textContent = conv.title || 'New chat';
-        li.onclick = () => loadChat(conv.id);
-        if (conv.id === currentConversationId) {
-            li.classList.add('bg-gray-700');
-        }
-        chatHistoryList.appendChild(li);
+
+    conversations.forEach(conversation => {
+        const item = document.createElement('div');
+        item.className = 'chat-history-item';
+        item.dataset.conversationId = conversation.id;
+        item.textContent = conversation.title;
+        item.addEventListener('click', () => loadChat(conversation.id));
+        chatHistoryList.appendChild(item);
     });
 }
 
-function loadChat(conversationId) {
+async function loadChat(conversationId) {
     currentConversationId = conversationId;
-    fetch(`/conversation/${conversationId}`)
-        .then(response => response.json())
-        .then(data => {
-            clearChatContainer();
-            data.messages.forEach(msg => {
-                displayMessage(msg.content, msg.sender === 'Human' ? 'user' : 'bot', msg.interaction_id);
-            });
-            updateChatHistoryList(data.conversations);
-        })
-        .catch(error => console.error('Error loading chat:', error));
+    try {
+        const response = await fetch(`/conversation/${conversationId}`);
+        const data = await response.json();
+        clearChatContainer();
+        data.messages.forEach(msg => {
+            displayMessage(msg.content, msg.sender === 'Human' ? 'user' : 'bot', msg.interaction_id);
+        });
+        questionCounter = data.messages.filter(msg => msg.sender === 'Human').length;
+    } catch (error) {
+        console.error('Error loading chat:', error);
+    }
 }
 
 function clearChatContainer() {
-    document.getElementById('chat-container').innerHTML = '';
+    const chatContainer = document.getElementById('chat-container');
+    chatContainer.innerHTML = '';
 }
 
-function startNewChat() {
-    fetch('/conversation/new', { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
-            currentConversationId = data.conversation_id;
-            clearChatContainer();
-            loadChatHistory();
-        })
-        .catch(error => console.error('Error creating new conversation:', error));
+async function startNewChat() {
+    try {
+        const response = await fetch('/conversation/new', { method: 'POST' });
+        const data = await response.json();
+        currentConversationId = data.conversation_id;
+        clearChatContainer();
+        loadChatHistory();
+        questionCounter = 0;
+    } catch (error) {
+        console.error('Error creating new conversation:', error);
+    }
 }
 
-function sendMessage() {
+async function sendMessage() {
     const userInput = document.getElementById('user-input');
     const message = userInput.value.trim();
     if (message) {
@@ -86,46 +88,75 @@ function sendMessage() {
         userInput.value = '';
         autoResizeTextarea.call(userInput);
 
-        fetch('/ask', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                question: message,
-                format: 'default',
-                conversation_id: currentConversationId
-            }),
-        })
-        .then(response => response.json())
-        .then(data => {
+        questionCounter++;
+
+        try {
+            const response = await fetch('/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question: message,
+                    format: 'default',
+                    conversation_id: currentConversationId
+                }),
+            });
+            const data = await response.json();
             if (data.answer) {
                 displayMessage(data.answer, 'bot', data.interaction_id);
+                checkQuestionLimit();
             } else {
                 console.error('No answer in response');
                 displayMessage('Sorry, I couldn\'t generate an answer.', 'bot');
             }
             currentConversationId = data.conversation_id;
             loadChatHistory();
-        })
-        .catch(error => {
+        } catch (error) {
             console.error('Error:', error);
             displayMessage('Sorry, there was an error processing your request. Please try again.', 'bot');
-        });
+        }
     }
+}
+
+function checkQuestionLimit() {
+    if (questionCounter >= 7) {
+        const message = "You've asked 7 questions in this conversation. Would you like to start a new chat for better context management?";
+        displayMessage(message, 'bot');
+        displayNewChatPrompt();
+    }
+}
+
+function displayNewChatPrompt() {
+    const chatContainer = document.getElementById('chat-container');
+    const promptElement = document.createElement('div');
+    promptElement.className = 'new-chat-prompt';
+    promptElement.innerHTML = `
+        <button onclick="startNewChat()" class="new-chat-button">
+            Start New Chat
+        </button>
+    `;
+    chatContainer.appendChild(promptElement);
 }
 
 function displayMessage(message, sender, interactionId = null) {
     const chatContainer = document.getElementById('chat-container');
     const messageElement = document.createElement('div');
-    messageElement.classList.add('message', sender === 'user' ? 'user-message' : 'bot-message');
+    messageElement.classList.add('message', `${sender}-message`);
     
     const icon = document.createElement('img');
     icon.src = sender === 'user' ? '/static/default-user-avatar.png' : '/static/dmu.jpeg';
     icon.alt = sender === 'user' ? 'User Avatar' : 'DMU Logo';
     icon.className = 'message-icon';
     
-    const content = document.createElement('p');
-    content.textContent = message;
-    
+    const content = document.createElement('div');
+    content.className = 'message-content';
+
+    const formattedMessage = formatMessage(message);
+    content.innerHTML = formattedMessage;
+
+    if (sender === 'bot' && message.includes("You've asked 7 questions")) {
+        content.classList.add('question-limit-prompt');
+    }
+
     const timestamp = document.createElement('span');
     timestamp.className = 'timestamp';
     timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -143,13 +174,33 @@ function displayMessage(message, sender, interactionId = null) {
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
+function formatMessage(message) {
+    // Convert numbered lists
+    message = message.replace(/(\d+\.)\s(.*?)(?=(?:\n\d+\.|\n\n|$))/gs, '<li>$2</li>');
+    
+    // Convert bullet points
+    message = message.replace(/•\s(.*?)(?=(?:\n•|\n\n|$))/gs, '<li>$1</li>');
+    
+    // Wrap lists in <ol> or <ul> tags
+    message = message.replace(/<li>.*?(?=<li>|$)/gs, match => {
+        return match.includes('1.') ? `<ol>${match}</ol>` : `<ul>${match}</ul>`;
+    });
+    
+    // Convert bold text
+    message = message.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+    
+    // Convert paragraphs
+    message = message.replace(/(.+?)(\n\n|$)/g, '<p>$1</p>');
+    
+    return message;
+}
+
 function createFeedbackButtons(interactionId) {
     const feedbackButtons = document.createElement('div');
-    feedbackButtons.classList.add('feedback-buttons', 'mt-2');
+    feedbackButtons.classList.add('feedback-buttons');
     feedbackButtons.innerHTML = `
-        <button onclick="submitFeedback(${interactionId}, 1)" class="feedback-button bg-red-500 text-white">Poor</button>
-        <button onclick="submitFeedback(${interactionId}, 3)" class="feedback-button bg-yellow-500 text-white">Okay</button>
-        <button onclick="submitFeedback(${interactionId}, 5)" class="feedback-button bg-green-500 text-white">Good</button>
+        <button onclick="submitFeedback(${interactionId}, 3)" class="feedback-button okay">Helpful</button>
+        <button onclick="submitFeedback(${interactionId}, 5)" class="feedback-button good">Not Helpful</button>
     `;
     return feedbackButtons;
 }
