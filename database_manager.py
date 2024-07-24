@@ -51,11 +51,51 @@ def store_interaction(conversation_id, question, answer, format):
     
     return execute_db_operation(_store)
 
-def update_feedback(interaction_id, feedback):
+def update_feedback(interaction_id, is_helpful):
+    def _update(cursor):
+        feedback_value = 1 if is_helpful else 0
+        cursor.execute('''
+        UPDATE interactions 
+        SET user_feedback = ?
+        WHERE id = ?
+        ''', (feedback_value, interaction_id))
+    
+    execute_db_operation(_update)
+
+def get_feedback_statistics():
+    def _get(cursor):
+        cursor.execute('''
+        SELECT 
+            AVG(CASE WHEN user_feedback = 1 THEN 1 ELSE 0 END) as helpful_ratio,
+            AVG(CASE WHEN user_feedback = 0 THEN 1 ELSE 0 END) as not_helpful_ratio,
+            AVG(user_feedback) as average_feedback
+        FROM interactions 
+        WHERE user_feedback IS NOT NULL
+        ''')
+        return cursor.fetchone()
+    
+    return execute_db_operation(_get)
+
+def get_low_rated_interactions(limit=10):
+    def _get(cursor):
+        cursor.execute('''
+        SELECT id, question, answer, user_feedback
+        FROM interactions
+        WHERE user_feedback = 0
+        ORDER BY timestamp DESC
+        LIMIT ?
+        ''', (limit,))
+        return cursor.fetchall()
+    
+    return execute_db_operation(_get)
+
+def update_interaction_for_improvement(interaction_id, improved_answer):
     def _update(cursor):
         cursor.execute('''
-        UPDATE interactions SET user_feedback = ? WHERE id = ?
-        ''', (feedback, interaction_id))
+        UPDATE interactions 
+        SET answer = ?, user_feedback = NULL 
+        WHERE id = ?
+        ''', (improved_answer, interaction_id))
     
     execute_db_operation(_update)
 
@@ -105,15 +145,15 @@ def update_conversation_title(conversation_id, title):
     
     execute_db_operation(_update)
 
-def get_recent_positive_interactions(limit=10, threshold=3):
+def get_recent_positive_interactions(limit=10):
     def _get(cursor):
         cursor.execute('''
         SELECT question, answer 
         FROM interactions 
-        WHERE user_feedback > ?
+        WHERE user_feedback = 1
         ORDER BY timestamp DESC
         LIMIT ?
-        ''', (threshold, limit))
+        ''', (limit,))
         return cursor.fetchall()
     
     return execute_db_operation(_get)

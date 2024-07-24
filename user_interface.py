@@ -1,10 +1,15 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import requests
 import os
+import logging
 
 app = Flask(__name__, static_folder='static')
 
 API_URL = "http://127.0.0.1:8050"
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def call_api(endpoint, method='GET', data=None):
     url = f"{API_URL}{endpoint}"
@@ -14,7 +19,7 @@ def call_api(endpoint, method='GET', data=None):
         elif method == 'POST':
             response = requests.post(url, json=data, timeout=30)
         elif method == 'DELETE':
-            response = requests.delete(url, json=data, timeout=30)
+            response = requests.delete(url, timeout=30)
         elif method == 'PUT':
             response = requests.put(url, json=data, timeout=30)
         else:
@@ -23,6 +28,7 @@ def call_api(endpoint, method='GET', data=None):
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
+        logger.error(f"API call error: {str(e)}")
         return {"error": f"Error calling API: {str(e)}"}
 
 @app.route('/')
@@ -38,7 +44,10 @@ def ask():
 @app.route('/feedback', methods=['POST'])
 def feedback():
     data = request.json
-    response = call_api('/feedback', method='POST', data=data)
+    response = call_api('/feedback', method='POST', data={
+        'interaction_id': data['interaction_id'],
+        'is_helpful': data['is_helpful']
+    })
     return jsonify(response)
 
 @app.route('/chat_history')
@@ -62,6 +71,11 @@ def delete_conversation(conversation_id):
     if 'error' in response:
         return jsonify(response), 400
     return jsonify({'message': 'Conversation deleted successfully'}), 200
+
+@app.route('/api_status')
+def api_status():
+    response = call_api('/')
+    return jsonify(response)
 
 @app.route('/static/<path:path>')
 def send_static(path):

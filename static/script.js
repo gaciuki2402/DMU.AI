@@ -49,7 +49,7 @@ function updateChatHistoryList(conversations) {
         deleteButton.className = 'delete-chat-button text-red-500 hover:text-red-700';
         deleteButton.textContent = 'Delete';
         deleteButton.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent triggering the loadChat function
+            e.stopPropagation();
             if (confirm('Are you sure you want to delete this chat?')) {
                 deleteChat(conversation.id);
             }
@@ -111,7 +111,6 @@ async function sendMessage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     question: message,
-                    format: 'default',
                     conversation_id: currentConversationId
                 }),
             });
@@ -234,19 +233,33 @@ function createFeedbackButtons(interactionId) {
     const feedbackButtons = document.createElement('div');
     feedbackButtons.classList.add('feedback-buttons');
     feedbackButtons.innerHTML = `
-        <button onclick="submitFeedback(${interactionId}, 3)" class="feedback-button okay">Helpful</button>
-        <button onclick="submitFeedback(${interactionId}, 5)" class="feedback-button good">Not Helpful</button>
+        <button onclick="submitHelpfulFeedback(${interactionId})" class="feedback-button helpful">Helpful</button>
+        <button onclick="submitNotHelpfulFeedback(${interactionId})" class="feedback-button not-helpful">Not Helpful</button>
     `;
     return feedbackButtons;
 }
 
-function submitFeedback(interactionId, rating) {
+function submitHelpfulFeedback(interactionId) {
+    submitFeedback(interactionId, true);
+}
+
+function submitNotHelpfulFeedback(interactionId) {
+    submitFeedback(interactionId, false);
+}
+
+function submitFeedback(interactionId, isHelpful) {
     fetch('/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ interaction_id: interactionId, feedback: rating }),
+        body: JSON.stringify({
+            interaction_id: interactionId,
+            is_helpful: isHelpful
+        }),
     })
     .then(response => response.json())
-    .then(data => console.log('Feedback submitted:', data))
+    .then(data => {
+        console.log('Feedback submitted:', data);
+        // You can add visual feedback here, e.g., changing button colors or showing a thank you message
+    })
     .catch(error => console.error('Error submitting feedback:', error));
 }
