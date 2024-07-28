@@ -154,6 +154,7 @@ function displayNewChatPrompt() {
 async function deleteChat(conversationId) {
     try {
         const response = await fetch(`/conversation/${conversationId}`, { method: 'DELETE' });
+        const data = await response.json();
         if (response.ok) {
             loadChatHistory();
             if (currentConversationId === conversationId) {
@@ -162,12 +163,12 @@ async function deleteChat(conversationId) {
                 questionCounter = 0;
             }
         } else {
-            console.error('Failed to delete conversation');
-            alert('Failed to delete conversation');
+            console.error('Failed to delete conversation:', data.error);
+            alert(`Failed to delete conversation: ${data.error}`);
         }
     } catch (error) {
         console.error('Error deleting conversation:', error);
-        alert('Error deleting conversation');
+        alert('Error deleting conversation: Network error');
     }
 }
 
@@ -235,7 +236,8 @@ function createFeedbackButtons(interactionId) {
     feedbackButtons.innerHTML = `
         <button onclick="submitHelpfulFeedback(${interactionId})" class="feedback-button helpful">Helpful</button>
         <button onclick="submitNotHelpfulFeedback(${interactionId})" class="feedback-button not-helpful">Not Helpful</button>
-    `;
+        <span class="feedback message"></span>
+        `;
     return feedbackButtons;
 }
 

@@ -69,7 +69,8 @@ def new_conversation():
 def delete_conversation(conversation_id):
     response = call_api(f'/conversation/{conversation_id}', method='DELETE')
     if 'error' in response:
-        return jsonify(response), 400
+        logger.error(f"Error deleting conversation: {response['error']}")
+        return jsonify({'error': response['error']}), 400
     return jsonify({'message': 'Conversation deleted successfully'}), 200
 
 @app.route('/api_status')
