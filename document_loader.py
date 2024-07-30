@@ -11,7 +11,7 @@ def load_documents():
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
     pdf_paths = [
-                'C:/Users/delbr/DMU/DMUDataSet2.pdf']
+                'DMUDataSet2.pdf']
 
     # Load PDFs 
     all_data = []
