@@ -2,7 +2,7 @@ from langchain.schema import Document
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from document_loader import load_documents
-from database_manager import get_conversation_history
+from db_manager import get_conversation_history
 import logging
 
 # Set up logging
