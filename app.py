@@ -1,115 +1,3 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
-import requests
-import os
-import logging
-import subprocess
-import sys
-import threading
-import time
-
-# Flask app setup
-mapp = Flask(__name__, static_folder="static")
-application = mapp
-
-API_URL = "https://dmuai-c7eef2dd470a.herokuapp.com/"
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Function to call API
-def call_api(endpoint, method="GET", data=None):
-    url = f"{API_URL}{endpoint}"
-    try:
-        if method == "GET":
-            response = requests.get(url, timeout=30)
-        elif method == "POST":
-            response = requests.post(url, json=data, timeout=30)
-        elif method == "DELETE":
-            response = requests.delete(url, timeout=30)
-        elif method == "PUT":
-            response = requests.put(url, json=data, timeout=30)
-        else:
-            return {"error": "Unsupported HTTP method"}
-
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as e:
-        logger.error(f"API call error: {str(e)}")
-        return {"error": f"Error calling API: {str(e)}"}
-
-# Flask routes
-@mapp.route("/")
-def index():
-    return render_template("index.html")
-
-@mapp.route("/ask", methods=["POST"])
-def ask():
-    data = request.json
-    response = call_api("/ask", method="POST", data=data)
-    return jsonify(response)
-
-@mapp.route("/feedback", methods=["POST"])
-def feedback():
-    data = request.json
-    response = call_api(
-        "/feedback",
-        method="POST",
-        data={
-            "interaction_id": data["interaction_id"],
-            "is_helpful": data["is_helpful"],
-        },
-    )
-    return jsonify(response)
-
-@mapp.route("/chat_history")
-def chat_history():
-    response = call_api("/chat_history")
-    return jsonify(response)
-
-@mapp.route("/conversation/<conversation_id>")
-def get_conversation(conversation_id):
-    response = call_api(f"/conversation/{conversation_id}")
-    return jsonify(response)
-
-@mapp.route("/conversation/new", methods=["POST"])
-def new_conversation():
-    response = call_api("/conversation/new", method="POST")
-    return jsonify(response)
-
-@mapp.route("/conversation/<conversation_id>", methods=["DELETE"])
-def delete_conversation(conversation_id):
-    response = call_api(f"/conversation/{conversation_id}", method="DELETE")
-    if "error" in response:
-        logger.error(f"Error deleting conversation: {response['error']}")
-        return jsonify({"error": response["error"]}), 400
-    return jsonify({"message": "Conversation deleted successfully"}), 200
-
-@mapp.route("/api_status")
-def api_status():
-    response = call_api("/")
-    return jsonify(response)
-
-@mapp.route("/static/<path:path>")
-def send_static(path):
-    return send_from_directory("static", path)
-
-# Function to start FastAPI
-def start_fastapi():
-    subprocess.Popen([sys.executable, "main.py"], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
-
-# Function to run Flask
-def run_flask():
-    mapp.run(debug=True, host="0.0.0.0", port=5000)
-
-if __name__ == "__main__":
-    fastapi_thread = threading.Thread(target=start_fastapi)
-    fastapi_thread.start()
-    time.sleep(5)  # Give FastAPI some time to start
-    try:
-        run_flask()
-    finally:
-        fastapi_thread.join()
 
 # FastAPI application
 import logging
@@ -336,5 +224,120 @@ async def startup_event():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8050)
-    
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+from flask import Flask, render_template, request, jsonify, send_from_directory
+import requests
+import os
+import logging
+import subprocess
+import sys
+import threading
+import time
+
+# Flask app setup
+mapp = Flask(__name__, static_folder="static")
+application = mapp
+
+API_URL = "https://dmuai-c7eef2dd470a.herokuapp.com/"
+
+# https://dmuai-c7eef2dd470a.herokuapp.com/
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Function to call API
+def call_api(endpoint, method="GET", data=None):
+    url = f"{API_URL}{endpoint}"
+    try:
+        if method == "GET":
+            response = requests.get(url, timeout=30)
+        elif method == "POST":
+            response = requests.post(url, json=data, timeout=30)
+        elif method == "DELETE":
+            response = requests.delete(url, timeout=30)
+        elif method == "PUT":
+            response = requests.put(url, json=data, timeout=30)
+        else:
+            return {"error": "Unsupported HTTP method"}
+
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        logger.error(f"API call error: {str(e)}")
+        return {"error": f"Error calling API: {str(e)}"}
+
+# Flask routes
+@mapp.route("/")
+def index():
+    return render_template("index.html")
+
+@mapp.route("/ask", methods=["POST"])
+def ask():
+    data = request.json
+    response = call_api("/ask", method="POST", data=data)
+    return jsonify(response)
+
+@mapp.route("/feedback", methods=["POST"])
+def feedback():
+    data = request.json
+    response = call_api(
+        "/feedback",
+        method="POST",
+        data={
+            "interaction_id": data["interaction_id"],
+            "is_helpful": data["is_helpful"],
+        },
+    )
+    return jsonify(response)
+
+@mapp.route("/chat_history")
+def chat_history():
+    response = call_api("/chat_history")
+    return jsonify(response)
+
+@mapp.route("/conversation/<conversation_id>")
+def get_conversation(conversation_id):
+    response = call_api(f"/conversation/{conversation_id}")
+    return jsonify(response)
+
+@mapp.route("/conversation/new", methods=["POST"])
+def new_conversation():
+    response = call_api("/conversation/new", method="POST")
+    return jsonify(response)
+
+@mapp.route("/conversation/<conversation_id>", methods=["DELETE"])
+def delete_conversation(conversation_id):
+    response = call_api(f"/conversation/{conversation_id}", method="DELETE")
+    if "error" in response:
+        logger.error(f"Error deleting conversation: {response['error']}")
+        return jsonify({"error": response["error"]}), 400
+    return jsonify({"message": "Conversation deleted successfully"}), 200
+
+@mapp.route("/api_status")
+def api_status():
+    response = call_api("/")
+    return jsonify(response)
+
+@mapp.route("/static/<path:path>")
+def send_static(path):
+    return send_from_directory("static", path)
+
+# Function to start FastAPI
+def start_fastapi():
+    subprocess.Popen([sys.executable, "main.py"], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+
+# Function to run Flask
+def run_flask():
+    mapp.run(debug=True, host="0.0.0.0", port=5000)
+
+if __name__ == "__main__":
+    fastapi_thread = threading.Thread(target=start_fastapi)
+    fastapi_thread.start()
+    time.sleep(5)  # Give FastAPI some time to start
+    try:
+        run_flask()
+    finally:
+        fastapi_thread.join()
