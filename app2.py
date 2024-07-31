@@ -8,7 +8,7 @@ import sys
 app = Flask(__name__, static_folder="static")
 application = app
 
-API_URL = "http://127.0.0.1:8050"
+API_URL = "https://dmuai-c7eef2dd470a.herokuapp.com/"
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
