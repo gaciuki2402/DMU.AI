@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 # Initialize FastAPI app
 app = FastAPI()
 
+print("ggggggggggggggggg")
+
 # Load environment variables and initialize database
 load_environment()
 init_db()
