@@ -13,7 +13,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from config import load_environment
 from index_manager import load_or_create_index, update_index_with_interaction, get_relevant_context
-from db_manager import (init_db, store_interaction, update_feedback, 
+from database_manager import (init_db, store_interaction, update_feedback, 
                               get_conversation_history, get_all_conversations, 
                               create_new_conversation, update_conversation_title, get_conversation, delete_conversation,
                               get_feedback_statistics, get_low_rated_interactions, update_interaction_for_improvement,
