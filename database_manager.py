@@ -1,5 +1,4 @@
 import psycopg2
-from psycopg2 import Error
 from psycopg2 import pool
 import os
 from dotenv import load_dotenv
@@ -15,22 +14,14 @@ load_dotenv()
 
 # Get DATABASE_URL from environment variable
 DATABASE_URL = os.getenv('DATABASE_URL')
-
-
-# postgresql://root:a7LVYJ51UCapWWq5vT5fz3RSV4o3d58s@dpg-cqnik788fa8c73aqgbv0-a.oregon-postgres.render.com/dmu_database
-
-# # Database connection parameters from environment variables
-# host = os.getenv('DB_HOST')
-# dbname = os.getenv('DB_NAME')
-# user = os.getenv('DB_USER')
-# password = os.getenv('DB_PASSWORD')
-# port = os.getenv('DB_PORT')
-# schema = os.getenv('DB_SCHEMA')  # Specify your schema here
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable is not set.")
 
 # Parse the DATABASE_URL to get the schema
 url_parts = urlparse(DATABASE_URL)
-schema = url_parts.path.lstrip('/').split('/')[1] if len(url_parts.path.lstrip('/').split('/')) > 1 else 'public'
-
+path_str = url_parts.path.lstrip('/')
+path_parts = path_str.split('/')
+schema = path_parts[1] if len(path_parts) > 1 else 'public'
 
 # Create a connection pool
 connection_pool = psycopg2.pool.SimpleConnectionPool(1, 20, DATABASE_URL)
@@ -48,7 +39,6 @@ def execute_db_operation(operation, *args):
         raise
     finally:
         connection_pool.putconn(conn)
-
 
 def init_db():
     def _init(cursor):
