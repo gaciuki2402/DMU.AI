@@ -17,11 +17,12 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set.")
 
-# Parse the DATABASE_URL to get the schema
-url_parts = urlparse(DATABASE_URL)
-path_str = url_parts.path.lstrip('/')
-path_parts = path_str.split('/')
-schema = path_parts[1] if len(path_parts) > 1 else 'public'
+# Ensure DATABASE_URL is a string
+DATABASE_URL = os.getenv('DATABASE_URL')
+print(f"DATABASE_URL: {DATABASE_URL}")
+
+if isinstance(DATABASE_URL, bytes):
+    DATABASE_URL = DATABASE_URL.decode('utf-8')
 
 # Create a connection pool
 connection_pool = psycopg2.pool.SimpleConnectionPool(1, 20, DATABASE_URL)
