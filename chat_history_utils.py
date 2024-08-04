@@ -1,18 +1,31 @@
-import sqlite3
-from langchain_community.chat_message_histories import SQLChatMessageHistory
+import psycopg2
+from psycopg2 import pool
+import os
+from langchain_community.chat_message_histories import PostgresChatMessageHistory
 
-CHAT_HISTORY_DB = "chat_history.db"
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+
+# Create a connection pool
+connection_pool = psycopg2.pool.SimpleConnectionPool(1, 20, DATABASE_URL)
 
 def get_chat_history(session_id: str):
-    history = SQLChatMessageHistory(session_id=session_id, connection_string=f"sqlite:///{CHAT_HISTORY_DB}")
+    history = PostgresChatMessageHistory(
+        session_id=session_id,
+        connection_string=DATABASE_URL,
+        table_name="chat_messages"
+    )
     return history.messages
 
-
 def query_chat_history(query: str, params: tuple = ()):
-    with sqlite3.connect(CHAT_HISTORY_DB) as conn:
-        cursor = conn.cursor()
-        cursor.execute(query, params)
-        return cursor.fetchall()
+    conn = connection_pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            return cur.fetchall()
+    finally:
+        connection_pool.putconn(conn)
+
     
 # Example queries
 def get_all_sessions():

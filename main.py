@@ -5,8 +5,10 @@ from typing import Optional, List
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 import asyncio
+from fastapi.middleware.cors import CORSMiddleware
 
-from langchain_community.chat_message_histories import SQLChatMessageHistory
+
+from langchain_community.chat_message_histories import PostgresChatMessageHistory
 from langchain_core.runnables import RunnableWithMessageHistory
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -23,10 +25,25 @@ from database_manager import (init_db, store_interaction, update_feedback,
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+from config import load_environment
+
+try:
+    load_environment()
+except ValueError as e:
+    print(f"Error loading environment: {e}")
+    exit(1)
+
 # Initialize FastAPI app
 app = FastAPI()
 
-print("ggggggggggggggggg")
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8050"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 # Load environment variables and initialize database
 load_environment()
@@ -64,8 +81,10 @@ chain = prompt | model
 # Wrap the chain with message history
 chain_with_history = RunnableWithMessageHistory(
     chain,
-    lambda session_id: SQLChatMessageHistory(
-        session_id=session_id, connection_string="sqlite:///chat_history.db"
+    lambda session_id: PostgresChatMessageHistory(
+        session_id=session_id, 
+        connection_string=os.environ.get('DATABASE_URL'),
+        table_name="Chat_history"
     ),
     input_messages_key="question",
     history_messages_key="history",
